@@ -3,9 +3,9 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 )
 
@@ -19,8 +19,8 @@ func main() {
 	peerCert, err := fetchCert(host)
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	notAfter := peerCert.NotAfter
@@ -48,7 +48,7 @@ func fetchCert(h string) (*x509.Certificate, error) {
 	peerCerts := conn.ConnectionState().PeerCertificates
 
 	if len(peerCerts) == 0 {
-		return nil, errors.New("no certificate returned")
+		return nil, fmt.Errorf("fetch cert %s: no cert returned", h)
 	}
 
 	return peerCerts[0], nil
