@@ -24,14 +24,11 @@ func main() {
 	}
 
 	notAfter := peerCert.NotAfter
-
 	now := time.Now()
 
-	notAfterDuration := notAfter.Sub(now)
+	daysLeft := daysUntil(notAfter, now)
 
-	notAfterDaysLeft := int(notAfterDuration.Hours() / 24)
-
-	fmt.Printf("%s 残り%d日\n", domain, notAfterDaysLeft)
+	fmt.Printf("%s 残り%d日\n", domain, daysLeft)
 
 }
 
@@ -52,4 +49,11 @@ func fetchCert(h string) (*x509.Certificate, error) {
 	}
 
 	return peerCerts[0], nil
+}
+
+func daysUntil(notAfter, now time.Time) int {
+
+	d := notAfter.Sub(now)
+
+	return int(d.Hours() / 24)
 }
