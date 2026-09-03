@@ -17,7 +17,7 @@ func TestDaysUntil(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			notAfter := now.Add(tt.duration)
+			notAfter := now.Add(tt.d)
 			got := daysUntil(notAfter, now)
 
 			if got != tt.want {
