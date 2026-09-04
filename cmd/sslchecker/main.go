@@ -53,7 +53,7 @@ func fetchCert(h string) (*x509.Certificate, error) {
 //	0.5 => 0
 //	-0.5 => -1
 //
-// 負の値はすでに証明書の期限が失効を意味している。
+// 負の値はSSL証明書の期限が失効していることを意味している。
 func daysUntil(notAfter, now time.Time) int {
 	d := notAfter.Sub(now)
 
