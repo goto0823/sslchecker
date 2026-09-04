@@ -47,9 +47,8 @@ func fetchCert(h string) (*x509.Certificate, error) {
 	return peerCerts[0], nil
 }
 
-// daysUntilはssl期限の残り日を返す。
-// 端数は安全に少なく倒すようにしている。
-//
+// daysUntil は SSL 証明書の有効期限までの残り日数を返す。
+// 端数は安全側（小さめ）に丸める。
 //	0.5 => 0
 //	-0.5 => -1
 //
