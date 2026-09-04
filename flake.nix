@@ -21,6 +21,7 @@
             pkgs.go-tools
             pkgs.delve
             pkgs.air
+            pkgs.golangci-lint
           ];
 
           shellHook = ''
