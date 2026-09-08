@@ -11,37 +11,48 @@ import (
 )
 
 func main() {
-	domain := "example.com"
-	port := "443"
-
-	host := net.JoinHostPort(domain, port)
-
-	peerCert, err := fetchCert(host)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	hosts := []string{
+		"example.com",
+		"google.com",
+		"does-not-exist.example",
+		"yahoo.com",
 	}
 
-	notAfter := peerCert.NotAfter
+	var failedFetch bool
 	now := time.Now()
+	for _, h := range hosts {
+		peerCert, err := fetchCert(h)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			failedFetch = true
+			continue
+		}
 
-	daysLeft := daysUntil(notAfter, now)
+		notAfter := peerCert.NotAfter
 
-	fmt.Printf("%s 残り%d日\n", domain, daysLeft)
+		daysLeft := daysUntil(notAfter, now)
 
+		fmt.Printf("%s 残り%d日\n", h, daysLeft)
+	}
+
+	if failedFetch {
+		os.Exit(1)
+	}
 }
 
-func fetchCert(h string) (*x509.Certificate, error) {
-	conn, err := tls.Dial("tcp", h, nil)
+func fetchCert(host string) (*x509.Certificate, error) {
+	const defaultPort = "443"
+	addr := net.JoinHostPort(host, defaultPort)
+	conn, err := tls.Dial("tcp", addr, nil)
 	if err != nil {
-		return nil, fmt.Errorf("fetch cert %s: %w", h, err)
+		return nil, fmt.Errorf("fetch cert %s: %w", host, err)
 	}
 
 	defer conn.Close()
 
 	peerCerts := conn.ConnectionState().PeerCertificates
 	if len(peerCerts) == 0 {
-		return nil, fmt.Errorf("fetch cert %s: no cert returned", h)
+		return nil, fmt.Errorf("fetch cert %s: no cert returned", host)
 	}
 
 	return peerCerts[0], nil
@@ -49,6 +60,7 @@ func fetchCert(h string) (*x509.Certificate, error) {
 
 // daysUntil は SSL 証明書の有効期限までの残り日数を返す。
 // 端数は安全側（小さめ）に丸める。
+//
 //	0.5 => 0
 //	-0.5 => -1
 //
