@@ -7,32 +7,55 @@ import (
 	"math"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
+
+type result struct {
+	host     string
+	daysLeft int
+	err      error
+}
 
 func main() {
 	hosts := []string{
 		"example.com",
 		"google.com",
 		"does-not-exist.example",
+		"also-does-not-exist.example",
 		"yahoo.com",
 	}
 
 	var failedFetch bool
+	var wg sync.WaitGroup
 	now := time.Now()
-	for _, h := range hosts {
-		peerCert, err := fetchCert(h)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+	results := make([]result, len(hosts))
+
+	for i, h := range hosts {
+		wg.Go(func() {
+			peerCert, err := fetchCert(h)
+			if err != nil {
+				results[i] = result{host: h, err: err}
+				return
+			}
+
+			notAfter := peerCert.NotAfter
+
+			daysLeft := daysUntil(notAfter, now)
+
+			results[i] = result{host: h, daysLeft: daysLeft}
+		})
+	}
+
+	wg.Wait()
+
+	for _, r := range results {
+		if r.err != nil {
+			fmt.Fprintln(os.Stderr, r.err)
 			failedFetch = true
 			continue
 		}
-
-		notAfter := peerCert.NotAfter
-
-		daysLeft := daysUntil(notAfter, now)
-
-		fmt.Printf("%s 残り%d日\n", h, daysLeft)
+		fmt.Printf("%s 残り%d日\n", r.host, r.daysLeft)
 	}
 
 	if failedFetch {
