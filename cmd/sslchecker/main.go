@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -24,6 +25,7 @@ func main() {
 		"does-not-exist.example",
 		"also-does-not-exist.example",
 		"yahoo.com",
+		"10.255.255.1",
 	}
 
 	var failedFetch bool
@@ -66,14 +68,19 @@ func main() {
 func fetchCert(host string) (*x509.Certificate, error) {
 	const defaultPort = "443"
 	addr := net.JoinHostPort(host, defaultPort)
-	conn, err := tls.Dial("tcp", addr, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var d tls.Dialer
+	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("fetch cert %s: %w", host, err)
 	}
 
 	defer conn.Close()
 
-	peerCerts := conn.ConnectionState().PeerCertificates
+	tlsCon := conn.(*tls.Conn)
+	peerCerts := tlsCon.ConnectionState().PeerCertificates
 	if len(peerCerts) == 0 {
 		return nil, fmt.Errorf("fetch cert %s: no cert returned", host)
 	}
