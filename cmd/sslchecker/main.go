@@ -25,16 +25,19 @@ func main() {
 		"does-not-exist.example",
 		"also-does-not-exist.example",
 		"yahoo.com",
-		"10.255.255.1",
+		//"10.255.255.1",
 	}
 
 	var failedFetch bool
 	var wg sync.WaitGroup
 	now := time.Now()
 	results := make([]result, len(hosts))
+	sem := make(chan struct{}, 3)
 
 	for i, h := range hosts {
 		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			peerCert, err := fetchCert(h)
 			if err != nil {
 				results[i] = result{host: h, err: err}
@@ -67,8 +70,9 @@ func main() {
 
 func fetchCert(host string) (*x509.Certificate, error) {
 	const defaultPort = "443"
+	const dialTimeout = 5 * time.Second
 	addr := net.JoinHostPort(host, defaultPort)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
 	var d tls.Dialer
@@ -79,8 +83,8 @@ func fetchCert(host string) (*x509.Certificate, error) {
 
 	defer conn.Close()
 
-	tlsCon := conn.(*tls.Conn)
-	peerCerts := tlsCon.ConnectionState().PeerCertificates
+	tlsConn := conn.(*tls.Conn)
+	peerCerts := tlsConn.ConnectionState().PeerCertificates
 	if len(peerCerts) == 0 {
 		return nil, fmt.Errorf("fetch cert %s: no cert returned", host)
 	}
