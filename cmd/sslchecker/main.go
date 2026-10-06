@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
 	"math"
 	"net"
@@ -19,26 +20,37 @@ type result struct {
 }
 
 func main() {
-	hosts := []string{
-		"example.com",
-		"google.com",
-		"does-not-exist.example",
-		"also-does-not-exist.example",
-		"yahoo.com",
-		//"10.255.255.1",
+	var timeout time.Duration
+	var concurrency int
+	flag.DurationVar(&timeout, "timeout", 5*time.Second, "接続タイムアウト")
+	flag.IntVar(&concurrency, "concurrency", 10, "同時接続数")
+
+	flag.Parse()
+
+	hosts := flag.Args()
+	if len(hosts) == 0 {
+		fmt.Fprintln(os.Stderr, "ホストを1つ以上入力してください")
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	if concurrency < 1 {
+		fmt.Fprintln(os.Stderr, "同時接続数は1以上選択してください")
+		flag.Usage()
+		os.Exit(2)
 	}
 
 	var failedFetch bool
 	var wg sync.WaitGroup
 	now := time.Now()
 	results := make([]result, len(hosts))
-	sem := make(chan struct{}, 3)
+	sem := make(chan struct{}, concurrency)
 
 	for i, h := range hosts {
 		wg.Go(func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			peerCert, err := fetchCert(h)
+			peerCert, err := fetchCert(h, timeout)
 			if err != nil {
 				results[i] = result{host: h, err: err}
 				return
@@ -68,11 +80,10 @@ func main() {
 	}
 }
 
-func fetchCert(host string) (*x509.Certificate, error) {
+func fetchCert(host string, timeout time.Duration) (*x509.Certificate, error) {
 	const defaultPort = "443"
-	const dialTimeout = 5 * time.Second
 	addr := net.JoinHostPort(host, defaultPort)
-	ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var d tls.Dialer
