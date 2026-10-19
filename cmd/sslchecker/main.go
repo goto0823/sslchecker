@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -19,65 +20,45 @@ type result struct {
 	err      error
 }
 
+type config struct {
+	timeout     time.Duration
+	concurrency int
+	hosts       []string
+}
+
+func (c config) validate() error {
+	if len(c.hosts) == 0 {
+		return errors.New("ホストを1つ以上入力してください")
+	}
+
+	if c.concurrency < 1 {
+		return errors.New("同時接続数は1以上選択してください")
+	}
+
+	return nil
+}
+
 func main() {
-	var timeout time.Duration
-	var concurrency int
-	flag.DurationVar(&timeout, "timeout", 5*time.Second, "接続タイムアウト")
-	flag.IntVar(&concurrency, "concurrency", 10, "同時接続数")
+	var cfg config
+	flag.DurationVar(&cfg.timeout, "timeout", 5*time.Second, "接続タイムアウト")
+	flag.IntVar(&cfg.concurrency, "concurrency", 10, "同時接続数")
 
 	flag.Parse()
+	cfg.hosts = flag.Args()
 
-	hosts := flag.Args()
-	if len(hosts) == 0 {
-		fmt.Fprintln(os.Stderr, "ホストを1つ以上入力してください")
+	err := cfg.validate()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	if concurrency < 1 {
-		fmt.Fprintln(os.Stderr, "同時接続数は1以上選択してください")
+	err = cfg.run()
+	if err != nil {
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	var failedFetch bool
-	var wg sync.WaitGroup
-	now := time.Now()
-	results := make([]result, len(hosts))
-	sem := make(chan struct{}, concurrency)
-
-	for i, h := range hosts {
-		wg.Go(func() {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			peerCert, err := fetchCert(h, timeout)
-			if err != nil {
-				results[i] = result{host: h, err: err}
-				return
-			}
-
-			notAfter := peerCert.NotAfter
-
-			daysLeft := daysUntil(notAfter, now)
-
-			results[i] = result{host: h, daysLeft: daysLeft}
-		})
-	}
-
-	wg.Wait()
-
-	for _, r := range results {
-		if r.err != nil {
-			fmt.Fprintln(os.Stderr, r.err)
-			failedFetch = true
-			continue
-		}
-		fmt.Printf("%s 残り%d日\n", r.host, r.daysLeft)
-	}
-
-	if failedFetch {
-		os.Exit(1)
-	}
 }
 
 func fetchCert(host string, timeout time.Duration) (*x509.Certificate, error) {
@@ -114,4 +95,47 @@ func daysUntil(notAfter, now time.Time) int {
 	d := notAfter.Sub(now)
 
 	return int(math.Floor(d.Hours() / 24))
+}
+
+func (c config) run() error {
+	var failedFetch bool
+	var wg sync.WaitGroup
+	now := time.Now()
+	results := make([]result, len(c.hosts))
+	sem := make(chan struct{}, c.concurrency)
+
+	for i, h := range c.hosts {
+		wg.Go(func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			peerCert, err := fetchCert(h, c.timeout)
+			if err != nil {
+				results[i] = result{host: h, err: err}
+				return
+			}
+
+			notAfter := peerCert.NotAfter
+
+			daysLeft := daysUntil(notAfter, now)
+
+			results[i] = result{host: h, daysLeft: daysLeft}
+		})
+	}
+
+	wg.Wait()
+
+	for _, r := range results {
+		if r.err != nil {
+			fmt.Fprintln(os.Stderr, r.err)
+			failedFetch = true
+			continue
+		}
+		fmt.Printf("%s 残り%d日\n", r.host, r.daysLeft)
+	}
+
+	if failedFetch {
+		os.Exit(1)
+	}
+
+	return nil
 }
