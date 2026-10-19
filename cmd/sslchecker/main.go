@@ -55,8 +55,8 @@ func main() {
 
 	err = cfg.run()
 	if err != nil {
-		flag.Usage()
-		os.Exit(2)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 }
@@ -134,7 +134,7 @@ func (c config) run() error {
 	}
 
 	if failedFetch {
-		os.Exit(1)
+		return errors.New("SSL証明書が取得できませんでした")
 	}
 
 	return nil
