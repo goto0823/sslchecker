@@ -98,7 +98,6 @@ func daysUntil(notAfter, now time.Time) int {
 }
 
 func (c config) run() error {
-	var failedFetch bool
 	var wg sync.WaitGroup
 	now := time.Now()
 	results := make([]result, len(c.hosts))
@@ -124,18 +123,14 @@ func (c config) run() error {
 
 	wg.Wait()
 
+	var errs []error
 	for _, r := range results {
 		if r.err != nil {
-			fmt.Fprintln(os.Stderr, r.err)
-			failedFetch = true
+			errs = append(errs, r.err)
 			continue
 		}
 		fmt.Printf("%s 残り%d日\n", r.host, r.daysLeft)
 	}
 
-	if failedFetch {
-		return errors.New("SSL証明書が取得できませんでした")
-	}
-
-	return nil
+	return errors.Join(errs...)
 }
