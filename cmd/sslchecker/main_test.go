@@ -1,6 +1,8 @@
 package main
 
 import (
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -26,6 +28,29 @@ func TestDaysUntil(t *testing.T) {
 			got := daysUntil(notAfter, now)
 			if got != tt.want {
 				t.Errorf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReadHosts(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"1行のみ", "apple.cm", []string{"apple.com"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := strings.NewReader(tt.in)
+			got, err := readHosts(h)
+			if err != nil {
+				t.Fatalf("err has: %q", err)
+			}
+			if !slices.Equal(tt.want, got) {
+				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
