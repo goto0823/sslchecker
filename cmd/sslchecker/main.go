@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -133,4 +136,29 @@ func (c config) run() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func readHosts(r io.Reader) ([]string, error) {
+	scanner := bufio.NewScanner(r)
+
+	var hosts []string
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		hosts = append(hosts, line)
+	}
+
+	err := scanner.Err()
+	if err != nil {
+		return nil, fmt.Errorf("read hosts: %w", err)
+	}
+
+	return hosts, nil
 }
