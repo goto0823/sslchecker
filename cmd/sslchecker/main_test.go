@@ -39,7 +39,7 @@ func TestReadHosts(t *testing.T) {
 		in   string
 		want []string
 	}{
-		{"1行のみ", "apple.cm", []string{"apple.com"}},
+		{"1行のみ", "apple.com", []string{"apple.com"}},
 	}
 
 	for _, tt := range tests {
