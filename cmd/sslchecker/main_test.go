@@ -40,6 +40,11 @@ func TestReadHosts(t *testing.T) {
 		want []string
 	}{
 		{"1行のみ", "apple.com", []string{"apple.com"}},
+		{"複数行", "apple.com\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"空行を含む", "apple.com\n\nyahoo.com", []string{"apple.com", "yahoo.com"}},
+		{"前後に空白を含む", "\tapple.com\t\ngoogle.com \nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"全角スペースを含む", "apple.com\u3000\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"タブを含む", "apple.com\t\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 	}
 
 	for _, tt := range tests {
@@ -47,7 +52,7 @@ func TestReadHosts(t *testing.T) {
 			h := strings.NewReader(tt.in)
 			got, err := readHosts(h)
 			if err != nil {
-				t.Fatalf("err has: %q", err)
+				t.Fatalf("err has: %v", err)
 			}
 			if !slices.Equal(tt.want, got) {
 				t.Errorf("got %q, want %q", got, tt.want)
