@@ -47,6 +47,7 @@ func TestReadHosts(t *testing.T) {
 		{"タブを含む", "apple.com\t\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 		{"#のコメント", "apple.com\n#コメント\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 		{"スペースのある#のコメント", "apple.com\n #old.com\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"空のファイル", "", nil},
 	}
 
 	for _, tt := range tests {
