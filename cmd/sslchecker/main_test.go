@@ -45,6 +45,8 @@ func TestReadHosts(t *testing.T) {
 		{"前後に空白を含む", "\tapple.com\t\ngoogle.com \nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 		{"全角スペースを含む", "apple.com\u3000\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 		{"タブを含む", "apple.com\t\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"#のコメント", "apple.com\n#コメント\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"スペースのある#のコメント", "apple.com\n #old.com\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
 	}
 
 	for _, tt := range tests {
