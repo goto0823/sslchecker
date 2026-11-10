@@ -1,6 +1,9 @@
 package main
 
 import (
+	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,5 +31,60 @@ func TestDaysUntil(t *testing.T) {
 				t.Errorf("got %d, want %d", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestReadHosts(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"1行のみ", "apple.com", []string{"apple.com"}},
+		{"複数行", "apple.com\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"空行を含む", "apple.com\n\nyahoo.com", []string{"apple.com", "yahoo.com"}},
+		{"前後に空白を含む", "\tapple.com\t\ngoogle.com \nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"全角スペースを含む", "apple.com\u3000\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"タブを含む", "apple.com\t\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"#のコメント", "apple.com\n#コメント\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"スペースのある#のコメント", "apple.com\n #old.com\ngoogle.com\nyahoo.com", []string{"apple.com", "google.com", "yahoo.com"}},
+		{"空のファイル", "", nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := strings.NewReader(tt.in)
+			got, err := readHosts(h)
+			if err != nil {
+				t.Fatalf("err has: %v", err)
+			}
+			if !slices.Equal(tt.want, got) {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+type errReader struct{}
+
+func (r errReader) Read(b []byte) (int, error) {
+	return 0, errFakeRead
+}
+
+var errFakeRead = errors.New("errReader: fake test error")
+
+func TestReadHostsError(t *testing.T) {
+	r := errReader{}
+	h, err := readHosts(r)
+	if err == nil {
+		t.Fatal("err is nil")
+	}
+
+	if !errors.Is(err, errFakeRead) {
+		t.Fatalf("err: not errFakeRead %v", err)
+	}
+
+	if h != nil {
+		t.Fatalf("h: must nil %v", h)
 	}
 }
