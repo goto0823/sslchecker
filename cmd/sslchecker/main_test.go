@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -61,5 +62,29 @@ func TestReadHosts(t *testing.T) {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+type errReader struct{}
+
+func (r errReader) Read(b []byte) (int, error) {
+	return 0, errFakeRead
+}
+
+var errFakeRead = errors.New("errReader: fake test error")
+
+func TestReadHostsError(t *testing.T) {
+	r := errReader{}
+	h, err := readHosts(r)
+	if err == nil {
+		t.Fatal("err is nil")
+	}
+
+	if !errors.Is(err, errFakeRead) {
+		t.Fatalf("err: not errFakeRead %v", err)
+	}
+
+	if h != nil {
+		t.Fatalf("h: must nil %v", h)
 	}
 }
