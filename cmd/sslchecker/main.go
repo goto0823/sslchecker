@@ -49,6 +49,15 @@ func main() {
 	flag.Parse()
 	cfg.hosts = flag.Args()
 
+	if len(cfg.hosts) == 1 && cfg.hosts[0] == "-" {
+		hosts, err := readHosts(os.Stdin)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		cfg.hosts = hosts
+	}
+
 	err := cfg.validate()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
